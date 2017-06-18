@@ -1,39 +1,32 @@
-
 -module(erlpool_compile).
 -author("silviu.caragea").
 
 -define(GLOBALS_MODULE, erlpool_globals).
+-define(STRINGIFY(A), ??A).
 
 -export([compile_settings/1]).
 
 compile_settings(SettingsList) ->
-    code:purge(?GLOBALS_MODULE),
-    case dynamic_compile:load_from_string(get_settings_code(SettingsList)) of
-        {module, ?GLOBALS_MODULE} ->
-            ok;
-        Error ->
-            Error
+    case compile:noenv_forms(get_settings_code(SettingsList), []) of
+        {ok, ?GLOBALS_MODULE, B} ->
+            code:purge(?GLOBALS_MODULE),
+            case code:load_binary(?GLOBALS_MODULE, ?STRINGIFY(?GLOBALS_MODULE) ".erl", B) of
+                {module, ?GLOBALS_MODULE} -> ok;
+                Error -> Error
+            end;
+        Error -> Error
     end.
 
 get_settings_code(SettingsList) ->
-    binary_to_list(get_settings_code(SettingsList, <<>>, <<>>)).
+    Last = length(SettingsList) * 2,
+    {Exports, Body, _} = lists:foldr(fun({PoolName, PoolSize, _PoolGroup}, {EA, BA, L}) ->
+                                         {[{PoolName, 0}|EA],
+                                          [{function, L, PoolName, 0,
+                                            [{clause, L, [], [], [erl_parse:abstract(PoolSize, L)]}]}|BA],
+                                          L - 2}
+                                  end, {[], [{eof, Last + 4}], Last + 3}, SettingsList),
+    [{attribute, 1, file, {?STRINGIFY(?GLOBALS_MODULE) ".erl", 1}},
+     {attribute, 1, module, ?GLOBALS_MODULE},
+     {attribute, 3, export, Exports}|Body].
 
-get_settings_code([{PoolName, PoolSize, _PoolGroup}|T], AccHeaders, AccBody) ->
-    PoolNameBin = atom_to_binary(PoolName, latin1),
-    PoolSizeBin = integer_to_binary(PoolSize),
-
-    NewAccHeaders = <<AccHeaders/binary, PoolNameBin/binary,"/0,">>,
-    NewAccBody = <<AccBody/binary, PoolNameBin/binary,"()->", PoolSizeBin/binary, ".\n ">>,
-    get_settings_code(T, NewAccHeaders, NewAccBody);
-get_settings_code([], AccHeaders0, AccBody) ->
-    ModuleBin = atom_to_binary(?GLOBALS_MODULE, latin1),
-    ModuleHeader = <<"-module(", ModuleBin/binary, ").\n ">>,
-    case AccHeaders0 of
-        <<>> ->
-            ModuleHeader;
-        _ ->
-            %remove last comma
-            HeaderLength = byte_size(AccHeaders0) - 1,
-            <<AccHeaders:HeaderLength/binary, _Rest>> = AccHeaders0,
-            <<ModuleHeader/binary, "-export([", AccHeaders/binary, "]).\n ", AccBody/binary>>
-    end.
+-compile({inline, [get_settings_code/1]}).
