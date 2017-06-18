@@ -53,7 +53,7 @@ test_pid_round_robin(_Config) ->
 
 test_group(_Config) ->
 
-    Args = [{start_mfa, {benchmark_worker, start_link, [[]]}}],
+    Args = [{start_mfa, {dummy_worker, start_link, [[]]}}],
     ok = erlpool:start_pool(gpool1, [{size, 2}, {group, g1} |Args]),
     ok = erlpool:start_pool(gpool2, [{size, 3}, {group, g1} |Args]),
     ok = erlpool:start_pool(gpool3, [{size, 4}, {group, g2} |Args]),
