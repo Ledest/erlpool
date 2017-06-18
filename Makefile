@@ -10,5 +10,4 @@ bench:
 	erl -pa ebin -pa deps/*/ebin -noshell -eval "bench_pool:bench(100000, 4000)." -eval "init:stop()."
 
 ct:
-	mkdir -p logs
-	ct_run -suite integrity_test_SUITE -pa ebin -pa deps/*/ebin -logdir logs
+	${REBAR} ct
