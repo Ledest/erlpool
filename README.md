@@ -61,7 +61,7 @@ Arguments:
 - `size` : the pool size (how many workers are created and added in the supervisor)
 - `group`: used to group multiple pools in a group. For example you have two different apps that are using erlpool and you want to restart/delete the 
 pools for app1. Using groups you can delete/restart all pools for a certain application. 
-- `smart_mfa` : Defines the function call used to start the child process. It must be a module-function-arguments tuple `{M,F,A}` used as `apply(M,F,A)`
+- `start_mfa` : Defines the function call used to start the child process. It must be a module-function-arguments tuple `{M,F,A}` used as `apply(M,F,A)`
 - `supervisor_period` : the supervisor restart period in seconds (default to 1)
 - `supervisor_intensity` : the supervisor restart intensity (defaults to 100)
 - `supervisor_restart` : the supervisor restart strategy (permanent (default) | transient | temporary)
