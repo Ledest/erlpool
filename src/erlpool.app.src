@@ -2,8 +2,7 @@
     {description, "Erlang round-robin load balancer for Erlang processes based on ETS"},
     {vsn, "1.0"},
     {registered, []},
-    {applications, [kernel, stdlib]},
-    {included_applications, [dynamic_compile]},
+    {applications, [kernel, stdlib, compiler]},
     {mod, {erlpool_app, []}},
     {env, []}
 ]}.
