@@ -3,13 +3,11 @@
 
 -define(POOL_MANAGER_TAB, erlpool_manager).
 
--export([
-    init/0,
-    new_pool/2,
-    rem_pool/1,
-    rem_group/1,
-    get_pools/1
-]).
+-export([init/0,
+         new_pool/2,
+         rem_pool/1,
+         rem_group/1,
+         get_pools/1]).
 
 init() ->
     ?POOL_MANAGER_TAB = ets:new(?POOL_MANAGER_TAB, [named_table, public, {read_concurrency, true}]),
@@ -18,12 +16,10 @@ init() ->
 new_pool(PoolName, PoolArgs) ->
     case erlpool_sup:add_pool(PoolName, PoolArgs) of
         {ok, _} ->
-            PoolSize  = proplists:get_value(size, PoolArgs),
-            PoolGroup = proplists:get_value(group, PoolArgs, undefined),
-            ets:insert(?POOL_MANAGER_TAB, {PoolName, PoolSize, PoolGroup}),
+            ets:insert(?POOL_MANAGER_TAB,
+                       {PoolName, proplists:get_value(size, PoolArgs), proplists:get_value(group, PoolArgs, undefined)}),
             erlpool_compile:compile_settings(ets:tab2list(?POOL_MANAGER_TAB));
-        Error ->
-            Error
+        Error -> Error
     end.
 
 rem_pool(PoolName) ->
@@ -31,38 +27,21 @@ rem_pool(PoolName) ->
         ok ->
             ets:delete(?POOL_MANAGER_TAB, PoolName),
             erlpool_compile:compile_settings(ets:tab2list(?POOL_MANAGER_TAB));
-        Error ->
-            Error
+        Error -> Error
     end.
 
 rem_group(Group) ->
     try
-        RemoveFun = fun({PoolName, _Size, Gp}) ->
-            case Gp =:= Group of
-                true ->
-                    ok = rem_pool(PoolName);
-                _ ->
-                    ok
-            end
-        end,
-        lists:foreach(RemoveFun, ets:tab2list(?POOL_MANAGER_TAB))
+        lists:foreach(fun({PoolName, _Size, Gp}) -> Gp =:= Group andalso (ok = rem_pool(PoolName)) end,
+                      ets:tab2list(?POOL_MANAGER_TAB))
     catch
-        _: Error ->
-            {error, Error}
+        _:Error -> {error, Error}
     end.
 
 get_pools(Group) ->
     try
-        GetFun = fun({PoolName, _Size, Gp}, Acc) ->
-            case Gp =:= Group of
-                true ->
-                    [PoolName|Acc];
-                _ ->
-                    Acc
-            end
-        end,
-        {ok, lists:foldl(GetFun, [], ets:tab2list(?POOL_MANAGER_TAB))}
+        {ok, lists:filtermap(fun({PoolName, _Size, Gp}) -> Gp =:= Group andalso {true, PoolName} end,
+                             ets:tab2list(?POOL_MANAGER_TAB))}
     catch
-        _: Error ->
-            {error, Error}
+        _:Error -> {error, Error}
     end.
